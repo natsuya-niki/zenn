@@ -1,6 +1,6 @@
 ---
 title: "CodexにMCPとか色々設定して世界が変わった"
-emoji: "🐷"
+emoji: "🐄"
 type: "tech" # tech: 技術記事 / idea: アイデア
 topics: []
 published: true
@@ -37,18 +37,22 @@ B -->|Native| I[fas:fa-globe Web]
 notify = ["bash", "-lc", "afplay /System/Library/Sounds/Frog.aiff"]
 ```
 
-普段使わない音がいいよね。ピチョンって音にした。
+普段使わない音がいいので、ピチョンって音にしました。
 通知音の大きさはMacの方で調整。
 
 
-### Web検索の有効化
+### Web検索の有効化(Update: 2026-02-06)
 
-デフォルト無効になっている。OpenAPIとか参照してほしいから有効にする。
-参考記事から仕様が変わっていて、記事作成時点では下記が正しい。
+~~デフォルト無効になっている。OpenAPIとか参照してほしいから有効にする。~~
+~~参考記事から仕様が変わっていて、記事作成時点では下記が正しい。~~
+デフォルトで有効になったので有効にしたいときは特段設定しなくてよさそう。
+（cachedがデフォルト）
+逆に無効にするには指定しないといけなくなった。
+[Codex changelog 2026-01-28](https://developers.openai.com/codex/changelog/#codex-2026-01-28-mdx)
 
 ```~/.codex/config.toml
-[features]
-web_search_request = true
+# [features]
+# web_search_request = true
 ```
 
 ## MCP Asana
@@ -64,12 +68,14 @@ ASANA_ACCESS_TOKEN = "YOUR_ACCESS_TOKEN"
 
 ログインできないときにCodexにきくとタイムアウトのばせといわれたが、伸ばしても解決しなかった。
 ログインできないっていうときはトークンつかってアクセスしろ、でいけたのでとりあえずトークンつけている。
-トークン消したい。
+~~トークン消したい。~~
+トークン消してもブラウザで認証求めてきたのでトークン消せました。
 
 
 ## MCP Serena
 
 ### まずはSerenaを使えるようにする
+
 ```zsh
 % brew install uv
 
@@ -101,6 +107,8 @@ Activate the current dir as project using serena
 % codex mcp add serena -- \
 uvx --from git+https://github.com/oraios/serena \
 serena start-mcp-server --context codex --enable-web-dashboard=false
+
+## (2026-02-06 Updated)ときどきタイムアウトするので設定でタイムアウト10秒つけておく
 ```
 
 
@@ -117,8 +125,40 @@ Playwright入れようと思ってたけど、Chromeだけで事足りてるの�
 
 PlaywrightはE2Eテスト作るときに重宝するかもしれんが、それはおいおい。
 
+## MCP BugSnag(SmartBear MCP)
+GitHubでBugSnagのMCPサーバーがヒットしたが個人のものなので注意。
+SmartBearからMCPサーバーが公開されているのでそれを使いましょう。
+(公式にリファレンスありましたが、取得方法に言及してないのがイマイチ・・・)
+
+```
+# sample
+% codex mcp add smartbear \
+    --env BUGSNAG_AUTH_TOKEN=VALUE1 \
+    --env BUGSNAG_PROJECT_API_KEY=VALUE2 \
+    -- npx -y @smartbear/mcp@latest
+
+# Codex CLIに追加
+% codex mcp add smartbear \
+    --env BUGSNAG_AUTH_TOKEN=MY_TOKEN \
+    -- npx -y @smartbear/mcp@latest
+
+(codex cli) BugSnagからプロジェクト取得
+=> 取得できないと言われた。トークンを見直したが問題なかった
+
+# MCPサーバーを検証
+% npx -y @wong2/mcp-cli -c /tmp/mcp.json call-tool smartbear:bugsnag_list_projects --args '{}'
+=> JSONレスポンス取れたので大丈夫そう
+
+(codex cli) BugSnagからプロジェクト取得
+• Called smartbear.bugsnag_list_projects({})
+=> プロンプトかえってきた
+```
+
 
 ## 参考
 - [Codex CLIを使いこなすための機能・設定まとめ](https://zenn.dev/dely_jp/articles/codex-cli-matome)
 - [技術調査 - Serena MCP](https://zenn.dev/suwash/articles/serene_mcp_20250807)
+- [Codex changelog 2026-01-28](https://developers.openai.com/codex/changelog/#codex-2026-01-28-mdx)
+- [BugSnag Integration | SmartBear MCP Server | SmartBear](https://developer.smartbear.com/smartbear-mcp/docs/bugsnag-integration)
+- [SmartBear/smartbear-mcp: SmartBear's official MCP Server](https://github.com/SmartBear/smartbear-mcp)
 
