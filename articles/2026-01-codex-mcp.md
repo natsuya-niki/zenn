@@ -8,15 +8,21 @@ published: true
 
 ## コンセプト
 
-コンセプトは開発のボトルネックから人間が外れていく。
+「開発のボトルネックから人間が外れていく」
+
+ローカル環境ならデータもログもAIに渡せると思いますが、
+ステージングや本番環境での情報取得には相応のアクセス権
+たとえば、バグ修正の原因解析にはソース以外に
+ログ、バグトラッキング情報、データがあれば解析の精度があがるのは、
+人間もAIも同じだと思います。
+
+
 - 必要なもの：コンテキスト。サイロ化している。wikiとGoogleDrive
-- AIツールにアクセスを許可
-  - ソースファイル
-  - サーバーで何がおきているか：docker logs, rails console
-  - エラーチェック：rubocop, typecheck
   - 成果物の保存：commit
 - ブラウザの状態を見せる：playwrght, chrome devtools
 - トークン消費の節約：serena
+
+## 最新の構成
 
 ```mermaid
 flowchart LR
@@ -24,9 +30,10 @@ A[Engineer] -->|Prompt *manual| B[AI CLI tool]
 A --> |Custome Promt *semi-auto | B
 B -->|Native| C[fas:fa-code Code]
 B -->|MCP| D[serena] -->|saving token| C
-%% B -->|MCP| E[Asana] --> F[System inquiry]
+B -->|MCP| E[Asana] --> F[System inquiry]
 B -->|MCP| G[Chrome devtools] -->|debug| H[fab:fa-chrome Chrome Browser]
 B -->|Native| I[fas:fa-globe Web]
+B -->|Skill| J[AWS CLI] --> K[AWS CloudWatch Logs]
 ```
 
 ## Codex自体の設定
@@ -55,7 +62,8 @@ notify = ["bash", "-lc", "afplay /System/Library/Sounds/Frog.aiff"]
 # web_search_request = true
 ```
 
-## MCP Asana
+## MCP
+### Asana
 
 ```~/.codex/config.toml
 [mcp_servers.asana]
@@ -72,9 +80,9 @@ ASANA_ACCESS_TOKEN = "YOUR_ACCESS_TOKEN"
 トークン消してもブラウザで認証求めてきたのでトークン消せました。
 
 
-## MCP Serena
+### Serena
 
-### まずはSerenaを使えるようにする
+まずはSerenaを使えるようにする
 
 ```zsh
 % brew install uv
@@ -83,23 +91,23 @@ ASANA_ACCESS_TOKEN = "YOUR_ACCESS_TOKEN"
 % uvx --from git+https://github.com/oraios/serena serena start-mcp-server --context codex
 ```
 
-### Codex CLI に Serenaを追加
+Codex CLI に Serenaを追加
 ```zsh
 % codex mcp add serena -- uvx --from git+https://github.com/oraios/serena serena start-mcp-server --context codex
 ```
 
-### Cdexでプロジェクトをアクティブ化
+Codexでプロジェクトをアクティブ化
 
 ```zsh
 % codex
 
-/mcp
+(codex) /mcp
 
 # プロジェクトをアクティブ化するプロンプト
-Activate the current dir as project using serena
+(codex) Activate the current dir as project using serena
 ```
 
-### 便利。MCPでSerena使うときに毎回Serenaのローカルサーバーのページがうざい対策
+オマケ。MCPでSerena使うときに毎回Serenaのローカルサーバーのページがうざい対策
 
 ```zsh
 % codex mcp remove serena
@@ -108,15 +116,28 @@ Activate the current dir as project using serena
 uvx --from git+https://github.com/oraios/serena \
 serena start-mcp-server --context codex --enable-web-dashboard=false
 
-## (2026-02-06 Updated)ときどきタイムアウトするので設定でタイムアウト10秒つけておく
+```
+
+(Updated at 2026-02-06)ときどきタイムアウトするので設定でタイムアウト10秒つけておく
+```
+```
+```diff
+
+[mcp_servers.serena]
+command = "uvx"
+args = ["--from", "git+https://github.com/oraios/serena", "serena", "start-mcp-server", "--context", "codex", "--enable-web-dashboard=false"]
++ startup_timeout_sec = 10.0
+```
+```
 ```
 
 
-## MCP Chrome devtools
+### Chrome devtools
 
 ```zsh
 codex mcp add chrome-devtools -- npx chrome-devtools-mcp@latest
 ```
+
 プロンプトでブラウザでlocalhostのページで確認する指示したらブラウザが起動した。
 びっくらぽん。
 Playwright入れようと思ってたけど、Chromeだけで事足りてるので使ってみる。
@@ -125,7 +146,7 @@ Playwright入れようと思ってたけど、Chromeだけで事足りてるの�
 
 PlaywrightはE2Eテスト作るときに重宝するかもしれんが、それはおいおい。
 
-## MCP BugSnag(SmartBear MCP)
+### BugSnag(SmartBear MCP)
 GitHubでBugSnagのMCPサーバーがヒットしたが個人のものなので注意。
 SmartBearからMCPサーバーが公開されているのでそれを使いましょう。
 (公式にリファレンスありましたが、取得方法に言及してないのがイマイチ・・・)
@@ -154,6 +175,17 @@ SmartBearからMCPサーバーが公開されているのでそれを使いま�
 => プロンプトかえってきた
 ```
 
+## Skill
+
+### AWS CloudWatchLogs
+
+#### 公式MCPサーバーあるけど使わない理由
+[CloudWatch MCP Server | AWS MCP Servers](https://awslabs.github.io/mcp/servers/cloudwatch-mcp-server)
+CloudWatchLogsからの検索・ログ取得はデータスキャンで課金されるので、
+うかつな範囲で検索すると請求が怖い。
+そのため、aws cli経由で実行時に期間を必ず指定するようにし、実行前にコマンドを常に確認・承認する運用にする。
+ということをCodexに投げてSkill化しました。
+（慣れてきたらMCPサーバーにするかもしれません）
 
 ## 参考
 - [Codex CLIを使いこなすための機能・設定まとめ](https://zenn.dev/dely_jp/articles/codex-cli-matome)
